@@ -1,0 +1,15 @@
+% PSD demo Gnocchi block 529
+%% Load in Data
+load('LFP_F2001_Gnocchi_BlockWE-529.mat')
+
+
+%% Fourier transform
+
+
+%% Pwelch
+% If the window is a multiple of 2 it makes it easier to compute
+nfft = 2^(nextpow2(fs*10)); % Use a 10 second window
+win  = hanning(nfft);
+[pxx,fxx] = pwelch(inData,win,[],nfft,fs);
+% freqs of interest
+[~,i]=min(abs(fxx-50));
