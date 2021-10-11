@@ -1,7 +1,7 @@
 % PSD demo Gnocchi block 529
 %% Load in Data just looking at channel 4
 load('exampleData.mat')
-% Get rid of NaN
+% Get rid of NaN from previous cleaning
 data(isnan(data)) = [];
 
 %% Fourier transform. Gives a real and imaginary number per frequency
@@ -14,8 +14,8 @@ Y = abs(fft(data));
 x = (0:length(Y)-1)*fs/length(Y);
 
 % Split in half as we don't want the negative frequencies
-Y = Y(1:numel(Y)/2);
-x = x(1:numel(x)/2);
+Y = Y(1:floor(numel(Y)/2));
+x = x(1:floor(numel(x)/2));
 plot(x,Y); title('FFT'); xlabel('Frequency (Hz)'); ylabel('Magnitude')
 
 % Can see its pretty noisy and hard to make much sense of the data as it is
@@ -41,7 +41,15 @@ win  = hanning(nfft);
 [pxx,fxx] = pwelch(data,win,[],nfft,fs); % [] means default for the overlap window (e.g. 50%)
 
 % pxx is the magnitude and fxx is the frequency
-figure;plot(fxx,pxx); xlabel('Frequency (Hz)'); ylabel('Magnitude')
+figure;subplot(1,2,1)
+plot(fxx,pxx); xlabel('Frequency (Hz)'); ylabel('Magnitude'); title('Pwelch')
+xlim([0 100]); ylim([0 50])
+
+% Can also plot magnitude in dB
+subplot(1,2,2)
+plot(fxx,10*log10(pxx)); xlabel('Frequency (Hz)'); ylabel('Magnitude (dB)'); title('Pwelch')
+xlim([0 100]); ylim([0 50])
+
 
 %% Different sliding windows
 % The important parameter to change depending on the frequency resolution
@@ -64,28 +72,47 @@ win  = hanning(nfft);
 [pxx,fxx] = pwelch(data,win,[],nfft,fs);
 
 % Repeats of PL3
-freqs = (1000/150)*[1:4];
+% Look at the harmonics of 6.6666Hz which is the repeat rate for a pattern
+% length of 3
+freqs = (1000/150)*[1:7];
 y = [];
 for f = freqs
     % Find index closest to frequency of interest
     [~,i]=min(abs(fxx-f));   
-    y(end+1) = pxx(i);
+    y(end+1) = 10*log10(pxx(i));
 end
 
-figure;plot(fxx,pxx); xlabel('Frequency (Hz)'); ylabel('Magnitude'); hold on
+figure;plot(fxx,10*log10(pxx)); xlabel('Frequency (Hz)'); ylabel('Magnitude (dB)'); hold on
 scatter(freqs,y)
+xlim([0 50])
+
+%% Zero padding trials to get frequency resolution
+tempData = data(1:fs*10);
+windowLength = 4;
+nfft = 2^(nextpow2(fs*windowLength)); 
+win  = hanning(nfft);
+[pxx,fxx] = pwelch(tempData,win,[],nfft,fs);
+figure;plot(fxx,10*log10(pxx)); xlabel('Frequency (Hz)'); ylabel('Magnitude (dB)'); hold on
+[pxx,fxx] = pwelch(tempData,win,[],nfft,fs);
+
+
+
+xlim([0 50])
+
+
 
 %% Concatenating trials
-
+concatLength = 10;
+windowLength = 8;
 % 4s window
 % Get idx's
-begIdx = floor([1:100]*(fs*5));
+begIdx = floor([1:80]*(fs*concatLength));
 endIdx = begIdx(2:end)-1;
 
 order = randperm(numel(endIdx));
 newData = [];
 for i = 1:numel(order)
-    newData = [newData data(begIdx(order(i)):endIdx(order(i)))];
+    newData = [newData data(begIdx(order(i)):endIdx(order(i)))+(((rand*2)-1)*200)];
 end
 figure;plot(newData); hold on
 for i = 1:numel(order)
@@ -93,12 +120,12 @@ for i = 1:numel(order)
 end
 
 
-nfft = 2^(nextpow2(fs*8)); 
+nfft = 2^(nextpow2(fs*windowLength)); 
 win  = hanning(nfft);
 [pxx,fxx] = pwelch(newData,win,[],nfft,fs);
-figure;plot(fxx,pxx); hold on
+figure;plot(fxx,10*log10(pxx)); hold on
 [pxx,fxx] = pwelch(data(1:numel(newData)),win,[],nfft,fs);
-plot(fxx,pxx);
+plot(fxx,10*log10(pxx));
 xlabel('Frequency (Hz)'); ylabel('Magnitude');  xlim([0 50]);
 legend({'Concatenated data','Original data'})
 
